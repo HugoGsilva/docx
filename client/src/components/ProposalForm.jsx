@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FileDown, Loader2, Calendar, DollarSign, Percent, Type } from 'lucide-react';
 import axios from 'axios';
+import { API_CONFIG } from '../config/api';
 
 function ProposalForm({ template, onBack }) {
   const [formData, setFormData] = useState({});
@@ -74,7 +75,10 @@ function ProposalForm({ template, onBack }) {
         templateId: template.id,
         formData: formData
       }, {
-        responseType: 'blob'
+        responseType: 'blob',
+        headers: {
+          'Authorization': `Bearer ${API_CONFIG.API_KEY}`
+        }
       });
 
       // Criar link para download

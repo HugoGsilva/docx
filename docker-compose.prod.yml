@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  proposta-app:
+    image: hugogsilva/proposta-comercial:latest
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # API Key para autenticação
+      - API_KEY=ef1105993354bd1ae916cdba8d1b2c2a7a415d67a02848c79a91ece03a8adf14
+      # CORS - Origens permitidas
+      - ALLOWED_ORIGINS=https://docx.hugogsilva.dev,http://docx.hugogsilva.dev
+    volumes:
+      # Templates persistentes (monte seus templates ODT aqui)
+      - proposta_templates:/app/templates
+    networks:
+      - network_swarm_public
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+      labels:
+        # Traefik configuration
+        - traefik.enable=true
+        # HTTP Router (redirect to HTTPS)
+        - traefik.http.routers.proposta-http.rule=Host(`docx.hugogsilva.dev`)
+        - traefik.http.routers.proposta-http.entrypoints=web
+        - traefik.http.routers.proposta-http.middlewares=redirect-to-https
+        - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+        - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
+        # HTTPS Router
+        - traefik.http.routers.proposta.rule=Host(`docx.hugogsilva.dev`)
+        - traefik.http.routers.proposta.entrypoints=websecure
+        - traefik.http.routers.proposta.tls=true
+        - traefik.http.routers.proposta.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.proposta.service=proposta
+        - traefik.http.services.proposta.loadbalancer.server.port=3001
+
+networks:
+  network_swarm_public:
+    external: true
+
+volumes:
+  proposta_templates:
+    driver: local

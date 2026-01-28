@@ -15,13 +15,13 @@ const TEMPLATES = [
       { key: 'AC', label: 'A/C (Aos Cuidados)', type: 'text' },
       { key: 'REQUERENTE', label: 'Requerente', type: 'text' },
       { key: 'NUMEROPROCESSO', label: 'Número do Processo', type: 'text' },
-      { key: 'TOTAL', label: 'Valor Total', type: 'currency_raw' },
-      { key: 'VALORLIQUIDO', label: 'Valor Líquido', type: 'currency_raw' },
-      { key: 'VALORPROPOSTA', label: 'Valor da Proposta', type: 'currency_raw' },
-      { key: 'TAXAINTERMEDIACAO', label: 'Taxa de Intermediação', type: 'currency_raw' },
-      { key: 'INTERMEDIACAO', label: 'Valor Intermediação', type: 'currency_raw' },
-      { key: 'PARCERIA', label: 'Parceria', type: 'currency_raw' },
-      { key: 'ESCRITORIO', label: 'Escritório', type: 'currency_raw' }
+      { key: 'TOTAL', label: 'Valor Total', type: 'currency' },
+      { key: 'VALORLIQUIDO', label: 'Valor Líquido', type: 'currency' },
+      { key: 'VALORPROPOSTA', label: 'Valor da Proposta', type: 'currency' },
+      { key: 'TAXAINTERMEDIACAO', label: 'Taxa de Intermediação', type: 'currency' },
+      { key: 'INTERMEDIACAO', label: 'Valor Intermediação', type: 'currency' },
+      { key: 'PARCERIA', label: 'Parceria', type: 'currency' },
+      { key: 'ESCRITORIO', label: 'Escritório', type: 'currency' }
     ]
   },
   {

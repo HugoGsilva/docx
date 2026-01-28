@@ -99,7 +99,13 @@ async function generatePDF(templatePath, data) {
  * Preenche template DOCX com docxtemplater
  */
 async function fillDocxTemplate(templatePath, data) {
-  const content = fs.readFileSync(templatePath, 'binary');
+  // Forçar leitura fresh do arquivo (sem cache)
+  const fd = fs.openSync(templatePath, 'r');
+  const stats = fs.fstatSync(fd);
+  const content = Buffer.alloc(stats.size);
+  fs.readSync(fd, content, 0, stats.size, 0);
+  fs.closeSync(fd);
+  
   const zip = new PizZip(content);
   
   const doc = new Docxtemplater(zip, {
