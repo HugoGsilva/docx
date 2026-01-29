@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileDown, Loader2, Calendar, DollarSign, Percent, Type, Lock } from 'lucide-react';
+import { FileDown, Loader2, Calendar, DollarSign, Percent, Type, Lock, Edit3 } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../config/api';
 
@@ -8,6 +8,7 @@ function ProposalForm({ template, onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [manualMode, setManualMode] = useState(false); // Modo de entrada manual
 
   // Inicializar com data de hoje
   useEffect(() => {
@@ -45,7 +46,8 @@ function ProposalForm({ template, onBack }) {
   const parseCurrencyToNumber = (value) => {
     if (!value) return 0;
     // Remove tudo exceto números, vírgula e ponto
-    const cleaned = value.replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
+    // Usa /\./g para remover TODOS os pontos (separadores de milhar)
+    const cleaned = value.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
     return parseFloat(cleaned) || 0;
   };
 
@@ -71,14 +73,16 @@ function ProposalForm({ template, onBack }) {
     if (template.id === 'RPBANK') {
       const valorProposta = parseCurrencyToNumber(data.VALORPROPOSTA);
       const taxaIntermediacao = parseCurrencyToNumber(data.TAXAINTERMEDIACAO);
-      
+
       // TOTAL = VALORPROPOSTA - TAXAINTERMEDIACAO
       const total = valorProposta - taxaIntermediacao;
-      
-      // Calcular percentuais sobre o TOTAL
-      const intermediacao = total * 0.10; // 10%
-      const parceria = total * 0.08;       // 8%
-      const escritorio = total * 0.02;     // 2%
+
+      // Intermediação = 10% do TOTAL
+      const intermediacao = total * 0.10;
+
+      // Parceria e Escritório = 80% e 20% da INTERMEDIAÇÃO
+      const parceria = intermediacao * 0.80;    // 80% da intermediação
+      const escritorio = intermediacao * 0.20;  // 20% da intermediação
 
       newData.TOTAL = numberToCurrency(total);
       newData.INTERMEDIACAO = numberToCurrency(intermediacao);
@@ -89,7 +93,7 @@ function ProposalForm({ template, onBack }) {
     if (template.id === 'SD-RESOLV') {
       const valorProposta = parseCurrencyToNumber(data.VALORPROPOSTA);
       const valorIntermediacao = parseCurrencyToNumber(data.VALORINTERMEDIACAO);
-      
+
       // TOTAL = VALORPROPOSTA - VALORINTERMEDIACAO
       const total = valorProposta - valorIntermediacao;
       newData.TOTAL = numberToCurrency(total);
@@ -101,19 +105,22 @@ function ProposalForm({ template, onBack }) {
   // Handler para mudança de campos
   const handleChange = (key, value, type) => {
     let formattedValue = value;
-    
+
     if (type === 'currency') {
       formattedValue = formatCurrency(value);
     } else if (type === 'currency_raw') {
       formattedValue = formatCurrencyRaw(value);
     }
-    
+
     setFormData(prev => {
       const updated = {
         ...prev,
         [key]: formattedValue
       };
-      // Recalcular campos automáticos
+      // Só recalcular campos automáticos se NÃO estiver em modo manual
+      if (manualMode) {
+        return updated; // Não recalcula, apenas atualiza o valor
+      }
       return calculateFields(updated);
     });
   };
@@ -147,15 +154,15 @@ function ProposalForm({ template, onBack }) {
 
       // Gerar nome do arquivo personalizado
       let fileName = `proposta_${template.id}.pdf`;
-      
+
       if (template.fileNameFields) {
         const processo = formData[template.fileNameFields.processo] || '';
         const nome = formData[template.fileNameFields.nome] || '';
         const data = formData[template.fileNameFields.data] || '';
-        
+
         // Limpar caracteres inválidos para nome de arquivo
         const cleanStr = (str) => str.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_');
-        
+
         if (processo && nome && data) {
           fileName = `${cleanStr(processo)}_${cleanStr(nome)}_${cleanStr(data)}.pdf`;
         }
@@ -176,7 +183,7 @@ function ProposalForm({ template, onBack }) {
       setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
       console.error('Erro ao gerar proposta:', err);
-      
+
       if (err.response?.data instanceof Blob) {
         const text = await err.response.data.text();
         try {
@@ -215,24 +222,38 @@ function ProposalForm({ template, onBack }) {
   const renderField = (field) => {
     const { key, label, type, calculated, autoFill } = field;
 
-    // Campo calculado (editável - valor é sugestão)
+    // Campo calculado - bloqueado ou editável dependendo do modo
     if (calculated) {
+      const isEditable = manualMode;
       return (
         <div key={key} className="relative">
           <label className="block text-sm font-medium text-blue-700 mb-2">
-            {label} <span className="text-xs text-blue-500">(sugestão - clique para editar)</span>
+            {label} <span className="text-xs text-blue-500">
+              {isEditable ? '(modo manual)' : '(calculado automaticamente)'}
+            </span>
           </label>
           <div className="relative">
             <div className="absolute left-3 top-1/2 -translate-y-1/2">
-              {getFieldIcon(type, false)}
+              {getFieldIcon(type, !isEditable)}
             </div>
-            <input
-              type="text"
-              className="input-field pl-10 bg-blue-50 text-blue-800 font-semibold hover:bg-blue-100 focus:bg-white transition-colors"
-              value={formData[key] || 'R$ 0,00'}
-              placeholder="R$ 0,00"
-              onChange={(e) => handleChange(key, e.target.value, 'currency')}
-            />
+            {isEditable ? (
+              <input
+                type="text"
+                className="input-field pl-10 bg-blue-50 text-blue-800 font-semibold hover:bg-blue-100 focus:bg-white transition-colors"
+                value={formData[key] || ''}
+                placeholder="R$ 0,00"
+                onChange={(e) => handleChange(key, e.target.value, 'currency')}
+              />
+            ) : (
+              <input
+                type="text"
+                className="input-field pl-10 bg-blue-50 text-blue-800 font-semibold cursor-not-allowed opacity-80"
+                value={formData[key] || 'R$ 0,00'}
+                placeholder="R$ 0,00"
+                readOnly
+                disabled
+              />
+            )}
           </div>
         </div>
       );
@@ -374,8 +395,23 @@ function ProposalForm({ template, onBack }) {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
           {template.fields.map(renderField)}
+        </div>
+
+        {/* Botão para alternar modo manual */}
+        <div className="mb-6 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setManualMode(!manualMode)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${manualMode
+              ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-300'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+              }`}
+          >
+            <Edit3 size={16} />
+            {manualMode ? 'Voltar ao cálculo automático' : 'Inserir dados manualmente'}
+          </button>
         </div>
 
         {error && (

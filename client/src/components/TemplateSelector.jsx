@@ -19,8 +19,8 @@ const TEMPLATES = [
       { key: 'TAXAINTERMEDIACAO', label: 'Taxa de Intermediação', type: 'currency' },
       { key: 'TOTAL', label: 'Valor Total', type: 'currency', calculated: true },
       { key: 'INTERMEDIACAO', label: 'Intermediação (10%)', type: 'currency', calculated: true },
-      { key: 'PARCERIA', label: 'Parceria (8%)', type: 'currency', calculated: true },
-      { key: 'ESCRITORIO', label: 'Escritório (2%)', type: 'currency', calculated: true }
+      { key: 'PARCERIA', label: 'Parceria (80%)', type: 'currency', calculated: true },
+      { key: 'ESCRITORIO', label: 'Escritório (20%)', type: 'currency', calculated: true }
     ],
     // Campos para nome do arquivo: processo + AC + data
     fileNameFields: { processo: 'NUMEROPROCESSO', nome: 'AC', data: 'DATA' }
@@ -51,7 +51,7 @@ function TemplateSelector({ onSelect }) {
     <div className="grid md:grid-cols-2 gap-6">
       {TEMPLATES.map((template) => {
         const IconComponent = template.icon;
-        
+
         return (
           <div
             key={template.id}
@@ -61,15 +61,15 @@ function TemplateSelector({ onSelect }) {
             <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${template.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
               <IconComponent className="text-white" size={32} />
             </div>
-            
+
             <h3 className="text-xl font-bold text-gray-800 mb-2">
               {template.name}
             </h3>
-            
+
             <p className="text-gray-600 mb-4">
               {template.description}
             </p>
-            
+
             <div className="flex flex-wrap gap-2">
               {template.fields.slice(0, 4).map((field) => (
                 <span
@@ -85,7 +85,7 @@ function TemplateSelector({ onSelect }) {
                 </span>
               )}
             </div>
-            
+
             <div className="mt-4 pt-4 border-t border-gray-100">
               <span className="text-sm text-gray-500">
                 Arquivo: <code className="bg-gray-100 px-2 py-1 rounded text-xs">{template.file}</code>
