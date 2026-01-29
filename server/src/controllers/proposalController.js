@@ -56,31 +56,33 @@ const TEMPLATE_FIELDS = {
   'RPBANK': {
     file: 'modeloB.odt',
     fields: [
-      { key: 'DATA', label: 'Data', type: 'date' },
-      { key: 'PROPOSTA', label: 'Número da Proposta', type: 'text' },
+      { key: 'DATA', label: 'Data', type: 'date', autoFill: true },
       { key: 'AC', label: 'A/C (Aos Cuidados)', type: 'text' },
       { key: 'REQUERENTE', label: 'Requerente', type: 'text' },
       { key: 'NUMEROPROCESSO', label: 'Número do Processo', type: 'text' },
-      { key: 'TOTAL', label: 'Valor Total', type: 'currency' },
       { key: 'VALORLIQUIDO', label: 'Valor Líquido', type: 'currency' },
       { key: 'VALORPROPOSTA', label: 'Valor da Proposta', type: 'currency' },
       { key: 'TAXAINTERMEDIACAO', label: 'Taxa de Intermediação', type: 'currency' },
-      { key: 'INTERMEDIACAO', label: 'Valor Intermediação', type: 'currency' },
-      { key: 'PARCERIA', label: 'Parceria', type: 'currency' },
-      { key: 'ESCRITORIO', label: 'Escritório', type: 'currency' }
-    ]
+      { key: 'TOTAL', label: 'Valor Total', type: 'currency', calculated: true },
+      { key: 'INTERMEDIACAO', label: 'Intermediação (10%)', type: 'currency', calculated: true },
+      { key: 'PARCERIA', label: 'Parceria (8%)', type: 'currency', calculated: true },
+      { key: 'ESCRITORIO', label: 'Escritório (2%)', type: 'currency', calculated: true }
+    ],
+    // Campos para nome do arquivo: processo + AC + data
+    fileNameFields: { processo: 'NUMEROPROCESSO', nome: 'AC', data: 'DATA' }
   },
   'SD-RESOLV': {
     file: 'MODELOA.ODT',
     fields: [
-      { key: 'DATA', label: 'Data', type: 'date' },
+      { key: 'DATA', label: 'Data', type: 'date', autoFill: true },
       { key: 'AC', label: 'A/C (Aos Cuidados)', type: 'text' },
       { key: 'PROCESSONUMERO', label: 'Número do Processo', type: 'text' },
       { key: 'VALORLIQUIDO', label: 'Valor Líquido', type: 'currency' },
       { key: 'VALORPROPOSTA', label: 'Valor Proposta', type: 'currency' },
       { key: 'VALORINTERMEDIACAO', label: 'Valor de Intermediação', type: 'currency' },
-      { key: 'TOTAL', label: 'Total', type: 'currency' }
-    ]
+      { key: 'TOTAL', label: 'Total', type: 'currency', calculated: true }
+    ],
+    fileNameFields: { processo: 'PROCESSONUMERO', nome: 'AC', data: 'DATA' }
   }
 };
 
@@ -152,17 +154,24 @@ exports.generateProposal = async (req, res) => {
       // Sanitizar o valor
       const sanitizedValue = sanitizeInput(rawValue);
       
-      // Validar por tipo de campo
-      if (field.type === 'date' && sanitizedValue && !isValidDate(sanitizedValue)) {
-        validationErrors.push(`${field.label}: formato de data inválido`);
-      }
-      
-      if ((field.type === 'currency' || field.type === 'currency_raw') && sanitizedValue && !isValidCurrency(sanitizedValue)) {
-        validationErrors.push(`${field.label}: formato de valor inválido`);
+      // Validar por tipo de campo (pular campos calculados)
+      if (!field.calculated) {
+        if (field.type === 'date' && sanitizedValue && !isValidDate(sanitizedValue)) {
+          validationErrors.push(`${field.label}: formato de data inválido`);
+        }
+        
+        if ((field.type === 'currency' || field.type === 'currency_raw') && sanitizedValue && !isValidCurrency(sanitizedValue)) {
+          validationErrors.push(`${field.label}: formato de valor inválido`);
+        }
       }
       
       replacementData[field.key] = sanitizedValue;
     });
+    
+    // Adicionar PROPOSTA como vazio para templates que ainda têm esse placeholder
+    if (templateId === 'RPBANK' && !replacementData.PROPOSTA) {
+      replacementData.PROPOSTA = '';
+    }
     
     // Se houver erros de validação, retornar
     if (validationErrors.length > 0) {

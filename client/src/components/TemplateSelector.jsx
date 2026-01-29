@@ -5,24 +5,25 @@ const TEMPLATES = [
   {
     id: 'RPBANK',
     name: 'RPBANK',
-    description: 'Modelo para propostas do RPBANK com cálculo de intermediação',
+    description: 'Modelo para propostas do RPBANK com cálculo automático',
     icon: Building2,
     color: 'from-blue-500 to-blue-700',
     file: 'modeloB.odt',
     fields: [
-      { key: 'DATA', label: 'Data', type: 'date' },
-      { key: 'PROPOSTA', label: 'Número da Proposta', type: 'text' },
+      { key: 'DATA', label: 'Data', type: 'date', autoFill: true },
       { key: 'AC', label: 'A/C (Aos Cuidados)', type: 'text' },
       { key: 'REQUERENTE', label: 'Requerente', type: 'text' },
       { key: 'NUMEROPROCESSO', label: 'Número do Processo', type: 'text' },
-      { key: 'TOTAL', label: 'Valor Total', type: 'currency' },
       { key: 'VALORLIQUIDO', label: 'Valor Líquido', type: 'currency' },
       { key: 'VALORPROPOSTA', label: 'Valor da Proposta', type: 'currency' },
       { key: 'TAXAINTERMEDIACAO', label: 'Taxa de Intermediação', type: 'currency' },
-      { key: 'INTERMEDIACAO', label: 'Valor Intermediação', type: 'currency' },
-      { key: 'PARCERIA', label: 'Parceria', type: 'currency' },
-      { key: 'ESCRITORIO', label: 'Escritório', type: 'currency' }
-    ]
+      { key: 'TOTAL', label: 'Valor Total', type: 'currency', calculated: true },
+      { key: 'INTERMEDIACAO', label: 'Intermediação (10%)', type: 'currency', calculated: true },
+      { key: 'PARCERIA', label: 'Parceria (8%)', type: 'currency', calculated: true },
+      { key: 'ESCRITORIO', label: 'Escritório (2%)', type: 'currency', calculated: true }
+    ],
+    // Campos para nome do arquivo: processo + AC + data
+    fileNameFields: { processo: 'NUMEROPROCESSO', nome: 'AC', data: 'DATA' }
   },
   {
     id: 'SD-RESOLV',
@@ -32,14 +33,16 @@ const TEMPLATES = [
     color: 'from-emerald-500 to-emerald-700',
     file: 'MODELOA.ODT',
     fields: [
-      { key: 'DATA', label: 'Data', type: 'date' },
+      { key: 'DATA', label: 'Data', type: 'date', autoFill: true },
       { key: 'AC', label: 'A/C (Aos Cuidados)', type: 'text' },
       { key: 'PROCESSONUMERO', label: 'Número do Processo', type: 'text' },
       { key: 'VALORLIQUIDO', label: 'Valor Líquido', type: 'currency' },
       { key: 'VALORPROPOSTA', label: 'Valor Proposta', type: 'currency' },
       { key: 'VALORINTERMEDIACAO', label: 'Valor de Intermediação', type: 'currency' },
-      { key: 'TOTAL', label: 'Total', type: 'currency' }
-    ]
+      { key: 'TOTAL', label: 'Total', type: 'currency', calculated: true }
+    ],
+    // Campos para nome do arquivo: processo + AC + data
+    fileNameFields: { processo: 'PROCESSONUMERO', nome: 'AC', data: 'DATA' }
   }
 ];
 

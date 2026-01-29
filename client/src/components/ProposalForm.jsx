@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FileDown, Loader2, Calendar, DollarSign, Percent, Type } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileDown, Loader2, Calendar, DollarSign, Percent, Type, Lock } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../config/api';
 
@@ -8,6 +8,16 @@ function ProposalForm({ template, onBack }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  // Inicializar com data de hoje
+  useEffect(() => {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('pt-BR');
+    setFormData(prev => ({
+      ...prev,
+      DATA: formattedDate
+    }));
+  }, []);
 
   // Formatar valor monetário com R$
   const formatCurrency = (value) => {
@@ -31,11 +41,61 @@ function ProposalForm({ template, onBack }) {
     });
   };
 
+  // Converter valor formatado para número
+  const parseCurrencyToNumber = (value) => {
+    if (!value) return 0;
+    // Remove tudo exceto números, vírgula e ponto
+    const cleaned = value.replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
+    return parseFloat(cleaned) || 0;
+  };
+
+  // Formatar número para moeda R$
+  const numberToCurrency = (num) => {
+    return num.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  };
+
   // Formatar data para exibição
   const formatDateDisplay = (value) => {
     if (!value) return '';
     const date = new Date(value + 'T00:00:00');
     return date.toLocaleDateString('pt-BR');
+  };
+
+  // Calcular campos automáticos
+  const calculateFields = (data) => {
+    const newData = { ...data };
+
+    if (template.id === 'RPBANK') {
+      const valorProposta = parseCurrencyToNumber(data.VALORPROPOSTA);
+      const taxaIntermediacao = parseCurrencyToNumber(data.TAXAINTERMEDIACAO);
+      
+      // TOTAL = VALORPROPOSTA - TAXAINTERMEDIACAO
+      const total = valorProposta - taxaIntermediacao;
+      
+      // Calcular percentuais sobre o TOTAL
+      const intermediacao = total * 0.10; // 10%
+      const parceria = total * 0.08;       // 8%
+      const escritorio = total * 0.02;     // 2%
+
+      newData.TOTAL = numberToCurrency(total);
+      newData.INTERMEDIACAO = numberToCurrency(intermediacao);
+      newData.PARCERIA = numberToCurrency(parceria);
+      newData.ESCRITORIO = numberToCurrency(escritorio);
+    }
+
+    if (template.id === 'SD-RESOLV') {
+      const valorProposta = parseCurrencyToNumber(data.VALORPROPOSTA);
+      const valorIntermediacao = parseCurrencyToNumber(data.VALORINTERMEDIACAO);
+      
+      // TOTAL = VALORPROPOSTA - VALORINTERMEDIACAO
+      const total = valorProposta - valorIntermediacao;
+      newData.TOTAL = numberToCurrency(total);
+    }
+
+    return newData;
   };
 
   // Handler para mudança de campos
@@ -48,10 +108,14 @@ function ProposalForm({ template, onBack }) {
       formattedValue = formatCurrencyRaw(value);
     }
     
-    setFormData(prev => ({
-      ...prev,
-      [key]: formattedValue
-    }));
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [key]: formattedValue
+      };
+      // Recalcular campos automáticos
+      return calculateFields(updated);
+    });
   };
 
   // Handler para data
@@ -81,12 +145,28 @@ function ProposalForm({ template, onBack }) {
         }
       });
 
+      // Gerar nome do arquivo personalizado
+      let fileName = `proposta_${template.id}.pdf`;
+      
+      if (template.fileNameFields) {
+        const processo = formData[template.fileNameFields.processo] || '';
+        const nome = formData[template.fileNameFields.nome] || '';
+        const data = formData[template.fileNameFields.data] || '';
+        
+        // Limpar caracteres inválidos para nome de arquivo
+        const cleanStr = (str) => str.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_');
+        
+        if (processo && nome && data) {
+          fileName = `${cleanStr(processo)}_${cleanStr(nome)}_${cleanStr(data)}.pdf`;
+        }
+      }
+
       // Criar link para download
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `proposta_${template.id}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -114,7 +194,10 @@ function ProposalForm({ template, onBack }) {
   };
 
   // Renderizar ícone do campo
-  const getFieldIcon = (type) => {
+  const getFieldIcon = (type, calculated) => {
+    if (calculated) {
+      return <Lock size={18} className="text-blue-500" />;
+    }
     switch (type) {
       case 'date':
         return <Calendar size={18} className="text-gray-400" />;
@@ -130,13 +213,46 @@ function ProposalForm({ template, onBack }) {
 
   // Renderizar campo baseado no tipo
   const renderField = (field) => {
-    const { key, label, type } = field;
+    const { key, label, type, calculated, autoFill } = field;
+
+    // Campo calculado (editável - valor é sugestão)
+    if (calculated) {
+      return (
+        <div key={key} className="relative">
+          <label className="block text-sm font-medium text-blue-700 mb-2">
+            {label} <span className="text-xs text-blue-500">(sugestão - clique para editar)</span>
+          </label>
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2">
+              {getFieldIcon(type, false)}
+            </div>
+            <input
+              type="text"
+              className="input-field pl-10 bg-blue-50 text-blue-800 font-semibold hover:bg-blue-100 focus:bg-white transition-colors"
+              value={formData[key] || 'R$ 0,00'}
+              placeholder="R$ 0,00"
+              onChange={(e) => handleChange(key, e.target.value, 'currency')}
+            />
+          </div>
+        </div>
+      );
+    }
 
     if (type === 'date') {
+      // Converter DD/MM/YYYY para YYYY-MM-DD para o input date
+      const getDateInputValue = () => {
+        if (!formData[key]) return '';
+        const parts = formData[key].split('/');
+        if (parts.length === 3) {
+          return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        return '';
+      };
+
       return (
         <div key={key} className="relative">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {label}
+            {label} {autoFill && <span className="text-xs text-green-600">(preenchido)</span>}
           </label>
           <div className="relative">
             <div className="absolute left-3 top-1/2 -translate-y-1/2">
@@ -145,14 +261,10 @@ function ProposalForm({ template, onBack }) {
             <input
               type="date"
               className="input-field pl-10"
+              value={getDateInputValue()}
               onChange={(e) => handleDateChange(key, e.target.value)}
             />
           </div>
-          {formData[key] && (
-            <p className="text-xs text-gray-500 mt-1">
-              Valor formatado: {formData[key]}
-            </p>
-          )}
         </div>
       );
     }
